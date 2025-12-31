@@ -16,6 +16,7 @@ interface Video {
   duration: string;
   thumbnail: string;
   category: string;
+  videoUrl?: string;
 }
 
 const mockVideos: Video[] = [
@@ -88,9 +89,12 @@ const mockVideos: Video[] = [
 ];
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<'home' | 'catalog' | 'upload' | 'profile' | 'subscriptions'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'catalog' | 'upload' | 'profile' | 'subscriptions' | 'watch'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string>('');
+  const [uploadedVideoFile, setUploadedVideoFile] = useState<File | null>(null);
 
   const categories = ['Все', 'Технологии', 'Дизайн', 'Путешествия', 'Образование', 'Кулинария', 'Музыка', 'Спорт'];
 
@@ -189,7 +193,7 @@ const Index = () => {
               <h2 className="text-3xl font-bold mb-6">🔥 Актуальное</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {mockVideos.slice(0, 3).map((video) => (
-                  <VideoCard key={video.id} video={video} />
+                  <VideoCard key={video.id} video={video} onVideoClick={(v) => { setSelectedVideo(v); setCurrentView('watch'); }} />
                 ))}
               </div>
             </section>
@@ -198,7 +202,7 @@ const Index = () => {
               <h2 className="text-3xl font-bold mb-6">📺 Рекомендации для вас</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {mockVideos.map((video) => (
-                  <VideoCard key={video.id} video={video} />
+                  <VideoCard key={video.id} video={video} onVideoClick={(v) => { setSelectedVideo(v); setCurrentView('watch'); }} />
                 ))}
               </div>
             </section>
@@ -226,7 +230,7 @@ const Index = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredVideos.map((video) => (
-                <VideoCard key={video.id} video={video} />
+                <VideoCard key={video.id} video={video} onVideoClick={(v) => { setSelectedVideo(v); setCurrentView('watch'); }} />
               ))}
             </div>
           </div>
@@ -238,13 +242,64 @@ const Index = () => {
               <h2 className="text-3xl font-bold mb-6">Загрузить видео</h2>
               
               <div className="space-y-6">
-                <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary transition-colors cursor-pointer">
-                  <Icon name="Upload" size={48} className="mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-lg mb-2">Перетащите видео сюда</p>
-                  <p className="text-sm text-muted-foreground mb-4">или</p>
-                  <Button className="bg-gradient-to-r from-primary to-secondary">
-                    Выбрать файл
-                  </Button>
+                <div 
+                  className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary transition-colors cursor-pointer"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('border-primary');
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove('border-primary');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-primary');
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('video/')) {
+                      setUploadedVideoFile(file);
+                      setUploadedVideoUrl(URL.createObjectURL(file));
+                    }
+                  }}
+                >
+                  {uploadedVideoUrl ? (
+                    <div className="space-y-4">
+                      <video src={uploadedVideoUrl} controls className="w-full max-h-[400px] rounded-lg mx-auto" />
+                      <p className="text-sm text-muted-foreground">Файл: {uploadedVideoFile?.name}</p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setUploadedVideoUrl('');
+                          setUploadedVideoFile(null);
+                        }}
+                      >
+                        Выбрать другое видео
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Icon name="Upload" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-lg mb-2">Перетащите видео сюда</p>
+                      <p className="text-sm text-muted-foreground mb-4">или</p>
+                      <Button 
+                        className="bg-gradient-to-r from-primary to-secondary"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'video/*';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              setUploadedVideoFile(file);
+                              setUploadedVideoUrl(URL.createObjectURL(file));
+                            }
+                          };
+                          input.click();
+                        }}
+                      >
+                        Выбрать файл
+                      </Button>
+                    </>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -310,21 +365,21 @@ const Index = () => {
               <TabsContent value="videos" className="mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {mockVideos.slice(0, 3).map((video) => (
-                    <VideoCard key={video.id} video={video} />
+                    <VideoCard key={video.id} video={video} onVideoClick={(v) => { setSelectedVideo(v); setCurrentView('watch'); }} />
                   ))}
                 </div>
               </TabsContent>
               <TabsContent value="liked" className="mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {mockVideos.slice(2, 5).map((video) => (
-                    <VideoCard key={video.id} video={video} />
+                    <VideoCard key={video.id} video={video} onVideoClick={(v) => { setSelectedVideo(v); setCurrentView('watch'); }} />
                   ))}
                 </div>
               </TabsContent>
               <TabsContent value="history" className="mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {mockVideos.slice(1, 4).map((video) => (
-                    <VideoCard key={video.id} video={video} />
+                    <VideoCard key={video.id} video={video} onVideoClick={(v) => { setSelectedVideo(v); setCurrentView('watch'); }} />
                   ))}
                 </div>
               </TabsContent>
@@ -364,7 +419,123 @@ const Index = () => {
               <h3 className="text-2xl font-bold mb-6">Новые видео от подписок</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {mockVideos.slice(0, 4).map((video) => (
-                  <VideoCard key={video.id} video={video} />
+                  <VideoCard key={video.id} video={video} onVideoClick={(v) => { setSelectedVideo(v); setCurrentView('watch'); }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentView === 'watch' && selectedVideo && (
+          <div className="max-w-7xl mx-auto animate-fade-in">
+            <Button 
+              variant="ghost" 
+              onClick={() => setCurrentView('home')}
+              className="mb-4"
+            >
+              <Icon name="ArrowLeft" size={20} className="mr-2" />
+              Назад
+            </Button>
+            
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="bg-black rounded-xl overflow-hidden aspect-video">
+                  {selectedVideo.videoUrl ? (
+                    <video 
+                      src={selectedVideo.videoUrl} 
+                      controls 
+                      autoPlay
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white">
+                      <div className="text-center">
+                        <Icon name="PlayCircle" size={64} className="mx-auto mb-4 opacity-50" />
+                        <p>Видео недоступно</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h1 className="text-2xl font-bold mb-4">{selectedVideo.title}</h1>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={selectedVideo.channelAvatar} />
+                        <AvatarFallback>{selectedVideo.channel[0]}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold">{selectedVideo.channel}</p>
+                        <p className="text-sm text-muted-foreground">1.5M подписчиков</p>
+                      </div>
+                      <Button className="ml-4 bg-gradient-to-r from-primary to-secondary">
+                        Подписаться
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-4">
+                    <Button variant="outline" size="sm">
+                      <Icon name="ThumbsUp" size={16} className="mr-2" />
+                      1.2K
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Icon name="ThumbsDown" size={16} />
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Icon name="Share2" size={16} className="mr-2" />
+                      Поделиться
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Icon name="Download" size={16} className="mr-2" />
+                      Скачать
+                    </Button>
+                  </div>
+
+                  <div className="bg-muted rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm mb-2">
+                      <span className="font-semibold">{selectedVideo.views} просмотров</span>
+                      <span>•</span>
+                      <span>{selectedVideo.timestamp}</span>
+                    </div>
+                    <p className="text-sm">
+                      Описание видео будет здесь. В этом видео мы рассмотрим основные концепции и практические примеры.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="text-xl font-bold mb-4">Комментарии</h3>
+                  <VideoComments />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-bold text-lg">Рекомендации</h3>
+                {mockVideos.filter(v => v.id !== selectedVideo.id).slice(0, 5).map((video) => (
+                  <div 
+                    key={video.id}
+                    onClick={() => setSelectedVideo(video)}
+                    className="flex gap-2 cursor-pointer hover:bg-muted p-2 rounded-lg transition-colors"
+                  >
+                    <div className="relative w-40 h-24 flex-shrink-0 rounded-lg overflow-hidden">
+                      <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
+                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-80 text-white text-xs px-1 rounded">
+                        {video.duration}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm line-clamp-2 mb-1">{video.title}</h4>
+                      <p className="text-xs text-muted-foreground">{video.channel}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span>{video.views}</span>
+                        <span>•</span>
+                        <span>{video.timestamp}</span>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -375,7 +546,81 @@ const Index = () => {
   );
 };
 
-const VideoCard = ({ video }: { video: Video }) => {
+const VideoComments = () => {
+  const [comments, setComments] = useState([
+    { id: '1', author: 'Иван Петров', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ivan', text: 'Отличное видео! Очень полезная информация', likes: 24, timestamp: '2 часа назад' },
+    { id: '2', author: 'Мария Сидорова', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=maria', text: 'Спасибо за такой детальный разбор темы', likes: 15, timestamp: '5 часов назад' }
+  ]);
+  const [newComment, setNewComment] = useState('');
+
+  const handleAddComment = () => {
+    if (newComment.trim()) {
+      setComments([
+        {
+          id: Date.now().toString(),
+          author: 'Вы',
+          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user',
+          text: newComment,
+          likes: 0,
+          timestamp: 'только что'
+        },
+        ...comments
+      ]);
+      setNewComment('');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Avatar className="w-10 h-10">
+          <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" />
+          <AvatarFallback>U</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 flex gap-2">
+          <Input
+            placeholder="Добавьте комментарий..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            className="bg-muted"
+          />
+          <Button size="sm" onClick={handleAddComment}>
+            <Icon name="Send" size={16} />
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {comments.map((comment) => (
+          <div key={comment.id} className="flex gap-3">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={comment.avatar} />
+              <AvatarFallback>{comment.author[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium text-sm">{comment.author}</span>
+                <span className="text-xs text-muted-foreground">{comment.timestamp}</span>
+              </div>
+              <p className="text-sm mb-2">{comment.text}</p>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                  <Icon name="ThumbsUp" size={12} className="mr-1" />
+                  {comment.likes}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                  Ответить
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const VideoCard = ({ video, onVideoClick }: { video: Video; onVideoClick?: (video: Video) => void }) => {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([
     { id: '1', author: 'Иван Петров', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ivan', text: 'Отличное видео! Очень полезная информация', likes: 24, timestamp: '2 часа назад' },
@@ -402,7 +647,10 @@ const VideoCard = ({ video }: { video: Video }) => {
 
   return (
     <div className="group animate-scale-in">
-      <div className="relative aspect-video rounded-xl overflow-hidden mb-3 cursor-pointer">
+      <div 
+        className="relative aspect-video rounded-xl overflow-hidden mb-3 cursor-pointer"
+        onClick={() => onVideoClick?.(video)}
+      >
         <img
           src={video.thumbnail}
           alt={video.title}
